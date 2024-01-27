@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Reading time",
+  "version": "1.0",
+  "action": {
+    "default_popup": "hello.html",
+    "default_icon": "hello_extensions.png"
+  },
+  "description": "Add the reading time to Chrome Extension documentation articles",
+  "content_scripts": [
+    {
+      "js": [
+        "scripts/content.js",
+        "scripts/library/jquery-3.7.1.min.js"
+      ],
+      "matches": [
+        "https://developer.chrome.com/docs/extensions/*",
+        "https://steamcommunity.com/id/*",
+        "https://developer.chrome.com/docs/webstore/*"
+      ]
+    }
+  ]
+}
