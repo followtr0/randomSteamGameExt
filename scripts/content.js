@@ -24,7 +24,6 @@ const observerMain = new MutationObserver(function (mutations, mutationInstance)
 
         badge = document.createElement("button");
         badge.style.marginBottom = "10px"
-        badge.style.position = "sticky"
         badge.style.top = "0px"
         badge.style.left = "0px"
         badge.style.zIndex = "999"
@@ -119,12 +118,12 @@ function hideGame (gameList) {
     }
 
     if (gamesHidden == gameList.childElementCount - 1) {
-      document.getElementById('extensionModalWinner').style.display = 'block';
       gameList.children[gameToHide].style.top = "0px"
-      document.getElementById('winnerwinnerchickendinner').appendChild(gameList.children[gameToHide]);
+
+      let gameData = getGameData(gameList.children[gameToHide]);
+      showModal(gameData.gameUrl, gameData.gameImg, gameData.gameName, gameData.gamePlayed)
       break;
     } else {
-      // gameList.children[gameToHide].style.display = 'none'
       gamesHidden++;
       hiddenGames.push(gameList.children[gameToHide])
       taken.push(gameToHide)
@@ -134,21 +133,29 @@ function hideGame (gameList) {
 
 }
 
+function getGameData (gameData) {
+  debugger;
+  const gameUrl = gameData.children[0].children[0].href;
+  const gameImg = gameData.children[0].children[0].children[0].children[0].children[0].srcset
+  const gameName = gameData.children[0].children[1].textContent;
+  let gamePlayed = gameData.children[0].children[2].children[0].textContent.replace('TOTAL PLAYED', '');
+  if (gameData.children[0].children[2].children[0].textContent.includes("LAST TWO")) {
+    gamePlayed = gameData.children[0].children[2].children[1].textContent.replace('TOTAL PLAYED', '')
+  }
+
+  return {
+    gameUrl: gameUrl,
+    gameImg: gameImg,
+    gameName: gameName,
+    gamePlayed: gamePlayed
+  };
+}
 function randomizeGame (listOfGames) {
-  // listOfGames.childNodes[5].childNodes.sort();
-  console.log("this much", listOfGames)
-  console.log("games?", listOfGames.childNodes)
   let randomGames = getRandom(listOfGames.childNodes, listOfGames.childNodes.length - 5);
   randomGames.forEach(x => x.style.display = 'none');
-  console.log("child of child fucking shitty js", steam[steam.length - 1].childNodes)
 
-  console.log("Button clicked! Your custom function is executed.");
 }
-//todo 
-// if user changed tabs rerun the get nodes observer and refresh button? 
-// the badge should be a button that removes 1 by 1 the games in the list
-// when list has less than 30 games it focuses on removal on the game until 1 is left
-// after that show a button to go agane
+
 observerMain.observe(document, {
   childList: true,
   subtree: true
@@ -187,6 +194,63 @@ function getRandom (arr, n) {
   return result;
 }
 
+
+function showModal (gameUrl, gameImage, gameName, gamePlayed) {
+  const html = `<head>
+  <title>Game Display</title>
+  <style>
+    .game-container {
+      width: 400px;
+      display: flex; 
+      /* Arrange sections side-by-side */
+    }
+
+    .image-section {
+      width: 50%;
+      /* Occupy half the width */
+    }
+
+    .image-section img {
+      max-width: 100%;
+      /* Image scales within the container */
+      height: auto;
+      /* Maintains aspect ratio */
+    }
+
+    .text-section {
+      width: 50%;
+      /* Occupy the other half */
+      padding: 15px;
+      /* Add some spacing around content */
+    }
+  </style>
+</head>
+
+<body>
+<div id="extensionModalWinner">
+  <div class="game-container">
+    <div class="image-section">
+      <a href="${gameUrl}">
+        <img src="${gameImage}" alt="Game Image">
+      </a>
+    </div>
+
+    <div class="text-section">
+      <p><strong>Game: </strong>${gameName}</p>
+      <p><strong>Played time: </strong>${gamePlayed}</p>
+    
+    </div>
+  </div>
+  <div id="resetButton">
+  <button id="closeModalButton">Close</button>
+  <button id="goAgain">Choose Another</button>
+</div>
+  </div>
+</body>`
+
+  document.body.insertAdjacentHTML('beforeend', html);
+
+}
 
 
 function injectModal () {
@@ -301,21 +365,16 @@ function injectCSS () {
 
 
 
-//if class name contains sectionTabs
-//see which one is active (find text of inner child with active class name) x.classList.contains('active')
 
-//if class name contains gameslistitems then its game list
-//iterate through all and save a list of every name
-//also get the image probably
-
-//create html to select a random game from the list
-// add button on page which will randomly delete games fro the list until one remains from the selected tab
-// while list of games size > 0
-//pick random number from initial size and remove the element from list
 const closeButton = document.getElementById('closeModalButton');
 
-// Attach a click event listener to hide the modal 
+
 closeButton.addEventListener('click', () => {
   document.getElementById('extensionModalWinner').style.display = 'none';
 
-});//
+});
+
+
+//todo
+// show modal buttons only after the game has been selected
+// dont just add the game to the main page, get what you need, name of the game, url and image, clone them, add them to the custom html

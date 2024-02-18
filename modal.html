@@ -1,0 +1,48 @@
+<html>
+
+<head>
+  <title>Game Display</title>
+  <style>
+    .game-container {
+      width: 400px;
+      display: flex;
+      /* Arrange sections side-by-side */
+    }
+
+    .image-section {
+      width: 50%;
+      /* Occupy half the width */
+    }
+
+    .image-section img {
+      max-width: 100%;
+      /* Image scales within the container */
+      height: auto;
+      /* Maintains aspect ratio */
+    }
+
+    .text-section {
+      width: 50%;
+      /* Occupy the other half */
+      padding: 15px;
+      /* Add some spacing around content */
+    }
+  </style>
+</head>
+
+<body>
+  <div class="game-container">
+    <div class="image-section">
+      <a href="https://store.steampowered.com/app/431730">
+        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/431730/library_600x900.jpg" alt="Game Image">
+      </a>
+    </div>
+
+    <div class="text-section">
+      <p></p>
+      <p>Consectetur adipiscing elit...</p>
+    </div>
+  </div>
+</body>
+
+</html>
