@@ -9,6 +9,9 @@
   "description": "Add the reading time to Chrome Extension documentation articles",
   "content_scripts": [
     {
+      "web_accessible_resources": [
+        "https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+      ],
       "js": [
         "scripts/content.js",
         "scripts/library/jquery-3.7.1.min.js"
