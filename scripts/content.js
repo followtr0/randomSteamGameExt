@@ -3,9 +3,9 @@ let libraryWrapper = null;
 let libraryElements = null;
 let randomizeButton = null;
 let hiddenGames = [];
+let theChosenGame;
 
 const pageObserver = new MutationObserver(function(mutations, observerInstance) {
-	debugger;
 	pageContainer = getPageContainer();
 	if (pageContainer) {
 		libraryWrapper = getLibraryWrapper();
@@ -96,6 +96,7 @@ function hideAllGamesExceptOne(gamesContainer) {
 	let gamesHidden = 0;
 
 	debugger;
+
 	while (gamesHidden <= gamesContainer.childElementCount - 1) {
 		let randomIndex = Math.floor(Math.random() * gamesContainer.childElementCount);
 		
@@ -122,14 +123,14 @@ function hideAllGamesExceptOne(gamesContainer) {
 
 function extractGameData(gameElement) {
 	debugger;
-	const gameUrl = gameElement.children[0].children[0].children[0].href
-	const gameImg = gameElement.children[0].children[0].children[0].children[0].children[0].children[0].srcset;
-	const gameName = gameElement.children[0].children[0].children[1].children[0].textContent;
+	const gameUrl = gameElement.children[0].children[0].href
+	const gameImg = gameElement.children[0].children[0].children[0].children[0].children[0].srcset;
+	const gameName = gameElement.children[0].children[1].children[0].textContent;
 	
 	// Handle different layouts for playtime display
-	let gamePlayed = gameElement.children[0].children[0].children[2].children[0].textContent.replace("TOTAL PLAYED", "");
-	if (gameElement.children[0].children[0].children[2].children[0].textContent.includes("LAST TWO")) {
-		gamePlayed = gameElement.children[0].children[0].children[2].children[1].textContent.replace("TOTAL PLAYED", "");
+	let gamePlayed = gameElement.children[0].children[2].children[0].textContent.replace("TOTAL PLAYED", "");
+	if (gameElement.children[0].children[2].children[0].textContent.includes("LAST TWO")) {
+		gamePlayed = gameElement.children[0].children[2].children[1].textContent.replace("TOTAL PLAYED", "");
 	}
 
 	return {
