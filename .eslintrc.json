@@ -1,0 +1,31 @@
+{
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "env": {
+    "browser": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "plugins": [
+    "@typescript-eslint" // You may also want "react" if using React
+  ],
+  "rules": {
+    "no-console": "warn",
+    "no-debugger": "warn",
+    "no-alert": "warn",
+    "no-unused-vars": "warn",
+    "curly": "error",
+    "eqeqeq": ["error", "always"],
+    "@typescript-eslint/no-unused-vars": "warn",
+    "@typescript-eslint/explicit-module-boundary-types": "off", 
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-non-null-assertion": "warn", 
+    "semi": ["error", "always"],
+    "quotes": ["error", "double"] 
+  }
+}
