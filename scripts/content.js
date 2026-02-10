@@ -1,6 +1,11 @@
 let pageContainer = null;
 let libraryWrapper = null;
 let randomizeButton = null;
+const randomButtonIconUrl = chrome.runtime.getURL("icons/icon48.png");
+
+function setButtonIcon(buttonElement) {
+	buttonElement.innerHTML = `<img src="${randomButtonIconUrl}" alt="Random game" style="width: 34px; height: 34px; display: block; pointer-events: none;" />`;
+}
 
 function resetButtonState() {
 	// Refresh reference if button was re-created
@@ -12,9 +17,11 @@ function resetButtonState() {
 		randomizeButton.style.width = "60px";
 		randomizeButton.style.borderRadius = "50%";
 		randomizeButton.style.padding = "0";
-		randomizeButton.style.fontSize = "30px";
-		randomizeButton.innerHTML = "🎮";
+		randomizeButton.style.fontSize = "0";
+		randomizeButton.textContent = "";
 		randomizeButton.style.background = "#199fff";
+		randomizeButton.style.backgroundImage = "none";
+		setButtonIcon(randomizeButton);
 	}
 }
 
@@ -60,13 +67,16 @@ function createButton() {
 		this.style.fontSize = "16px";
 		this.innerHTML = "Get random game!";
 		this.style.background = "#1a8cd8";
+		this.style.backgroundImage = "none";
 	});
 
 	randomizeButton.addEventListener("mouseleave", function() {
 		resetButtonState();
 	});
 
-	randomizeButton.textContent = "🎮";
+	randomizeButton.textContent = "";
+	randomizeButton.style.backgroundImage = "none";
+	setButtonIcon(randomizeButton);
 
 	// Inject button immediately
 	if (!document.getElementById('randomGameButton')) {

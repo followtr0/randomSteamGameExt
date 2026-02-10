@@ -37,5 +37,15 @@
   ],
   "host_permissions": [
     "https://steamcommunity.com/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*.png"
+      ],
+      "matches": [
+        "https://steamcommunity.com/*"
+      ]
+    }
   ]
 }
