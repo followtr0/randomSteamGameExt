@@ -1,25 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "Reading time",
+  "name": "Random Steam Game",
   "version": "1.0",
+  "description": "Picks a random game from your Steam library.",
   "action": {
-    "default_popup": "hello.html",
     "default_icon": "hello_extensions.png"
   },
-  "description": "Add the reading time to Chrome Extension documentation articles",
+  "background": {
+    "service_worker": "scripts/background-chrome.js"
+  },
   "content_scripts": [
     {
-      "web_accessible_resources": [
-        "https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
-      ],
       "js": [
-        "scripts/content.js",
-        "scripts/library/jquery-3.7.1.min.js"
+        "scripts/content.js"
       ],
       "matches": [
-        "https://developer.chrome.com/docs/extensions/*",
-        "https://steamcommunity.com/id/*",
-        "https://developer.chrome.com/docs/webstore/*"
+        "https://steamcommunity.com/id/*/games*"
       ]
     }
   ]

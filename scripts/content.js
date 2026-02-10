@@ -1,44 +1,163 @@
 let pageContainer = null;
 let libraryWrapper = null;
-let libraryElements = null;
 let randomizeButton = null;
-let hiddenGames = [];
-let theChosenGame;
 
-const pageObserver = new MutationObserver(function(mutations, observerInstance) {
+function resetButtonState() {
+	// Refresh reference if button was re-created
+	if (!randomizeButton || !document.getElementById('randomGameButton')) {
+		randomizeButton = document.getElementById('randomGameButton');
+	}
+
+	if (randomizeButton) {
+		randomizeButton.style.width = "60px";
+		randomizeButton.style.borderRadius = "50%";
+		randomizeButton.style.padding = "0";
+		randomizeButton.style.fontSize = "30px";
+		randomizeButton.innerHTML = "🎮";
+		randomizeButton.style.background = "#199fff";
+	}
+}
+
+function createButton() {
+	randomizeButton = document.createElement("button");
+	randomizeButton.id = "randomGameButton";
+	randomizeButton.style.cssText = `
+		position: fixed !important;
+		top: 150px !important;
+		right: 40px !important;
+		display: flex !important;
+		align-items: center;
+		justify-content: center;
+		width: 60px;
+		height: 60px;
+		min-width: 60px;
+		margin: 0;
+		padding: 0;
+		font-size: 30px;
+		font-weight: 600;
+		color: white;
+		background: #199fff !important;
+		border: none !important;
+		border-radius: 50% !important;
+		cursor: pointer;
+		z-index: 10000 !important;
+	`;
+
+	randomizeButton.addEventListener("mouseenter", function() {
+		const modal = document.getElementById("extensionModalWinner");
+		if (modal && modal.style.display === "flex") {
+			return; // Don't show hover text if modal is open
+		}
+
+		// Verify button still exists
+		if (!document.getElementById('randomGameButton')) {
+			return;
+		}
+
+		this.style.width = "200px";
+		this.style.borderRadius = "30px";
+		this.style.padding = "0 24px";
+		this.style.fontSize = "16px";
+		this.innerHTML = "Get random game!";
+		this.style.background = "#1a8cd8";
+	});
+
+	randomizeButton.addEventListener("mouseleave", function() {
+		resetButtonState();
+	});
+
+	randomizeButton.textContent = "🎮";
+
+	// Inject button immediately
+	if (!document.getElementById('randomGameButton')) {
+		document.body.appendChild(randomizeButton);
+	}
+}
+
+function ensureButtonExists() {
+	const existingButton = document.getElementById('randomGameButton');
+	if (!existingButton) {
+		createButton();
+	}
+}
+
+function initializeExtension() {
 	pageContainer = getPageContainer();
+
 	if (pageContainer) {
 		libraryWrapper = getLibraryWrapper();
+
 		if (libraryWrapper) {
-			libraryElements = libraryWrapper.childNodes;
-			if (libraryElements) {
-				injectModal();
-				injectCSS();
+			const currentLibraryElements = libraryWrapper.children;
 
-				randomizeButton = document.createElement("button");
-				randomizeButton.style.marginBottom = "10px";
-				randomizeButton.style.top = "0px";
-				randomizeButton.style.left = "0px";
-				randomizeButton.style.zIndex = "999";
-				randomizeButton.style.backgroundColor = "#199fff";
-				randomizeButton.style.padding = "20px";
+			if (currentLibraryElements) {
+				addListenersToGameTabs(currentLibraryElements);
 
-				addListenersToGameTabs(libraryElements);
-
-				randomizeButton.addEventListener("click", function() {
-					randomizeButton.textContent = "Clicked!";
-					hideAllGamesExceptOne(libraryElements[libraryElements.length - 1].children[5]);
-					arrangeGames(libraryElements[libraryElements.length - 1].children, false);
-					updateButtonText();
-				});
-
-				randomizeButton.textContent = "Click to get your random game!";
-				libraryWrapper.insertAdjacentElement("afterbegin", randomizeButton);
-				observerInstance.disconnect();
+				return true;
 			}
 		}
 	}
-});
+	return false;
+}
+
+function setupButtonEventListener() {
+	document.addEventListener('click', function(event) {
+		if (!(event.target instanceof Element)) {
+			return;
+		}
+
+		const randomButton = event.target.closest('#randomGameButton');
+		if (randomButton) {
+			resetButtonState();
+			runRandomPickWhenReady();
+		}
+	});
+}
+
+function initializeUI() {
+	// Inject modal and CSS immediately on page load
+	injectModal();
+	injectCSS();
+
+	// Create button immediately on page load
+	createButton();
+
+	// Setup event delegation for button clicks
+	setupButtonEventListener();
+
+	// Try to initialize immediately, or watch for page changes
+	if (!initializeExtension()) {
+		const pageObserver = new MutationObserver(function() {
+			initializeExtension();
+
+			// Always ensure button exists (in case Steam removed it)
+			ensureButtonExists();
+		});
+
+		pageObserver.observe(document, {
+			childList: true,
+			subtree: true
+		});
+	} else {
+		// Even if initialized successfully, keep watching for button removal
+		const pageObserver = new MutationObserver(function() {
+			initializeExtension();
+			ensureButtonExists();
+		});
+
+		pageObserver.observe(document.body, {
+			childList: true,
+			subtree: true
+		});
+	}
+}
+
+// Wait for DOM to be ready before initializing UI
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', initializeUI);
+} else {
+	initializeUI();
+}
 
 function addListenersToGameTabs(libraryElements) {
 	for (let i = 0; i < libraryElements.length; i++) {
@@ -50,18 +169,27 @@ function addListenersToGameTabs(libraryElements) {
 					tab.textContent.includes("All Games") ||
 					tab.textContent.includes("Perfect Games")
 				) {
+					if (tab.dataset.randomGameTabBound === 'true') {
+						continue;
+					}
+
+					tab.dataset.randomGameTabBound = 'true';
 					tab.addEventListener("click", function() {
 						if (this.className.includes("active")) {
 							return;
 						}
-						const gamesList = libraryElements[libraryElements.length - 1].children;
+						const gamesContainer = getGamesContainer();
+						if (!gamesContainer) {
+							return;
+						}
+						const gamesList = gamesContainer.children;
 						// Show all hidden games when switching tabs
 						for (let k = 0; k < gamesList.length; k++) {
 							if (gamesList[k].style.display === "none") {
 								gamesList[k].style.display = "";
 							}
 						}
-						arrangeGames(gamesList, true);
+						arrangeGames(gamesList, true, gamesContainer);
 					});
 				}
 			}
@@ -69,7 +197,54 @@ function addListenersToGameTabs(libraryElements) {
 	}
 }
 
-function arrangeGames(gamesList, arrangeAllGames) {
+function getGamesContainer() {
+	initializeExtension();
+
+	if (!libraryWrapper || libraryWrapper.children.length === 0) {
+		return null;
+	}
+
+	const gamesContainer = libraryWrapper.children[libraryWrapper.children.length - 1];
+	return gamesContainer;
+}
+
+function runRandomPickWhenReady() {
+	const waitIntervalMs = 250;
+	const maxWaitMs = 10000;
+	const startedAt = Date.now();
+
+	const tryPick = function() {
+		const gamesContainer = getGamesContainer();
+		if (!gamesContainer || gamesContainer.children.length === 0) {
+			return false;
+		}
+
+		hideAllGamesExceptOne(gamesContainer);
+		arrangeGames(gamesContainer.children, false, gamesContainer);
+		return true;
+	};
+
+	if (tryPick()) {
+		return;
+	}
+
+	const waitInterval = setInterval(function() {
+		if (tryPick()) {
+			clearInterval(waitInterval);
+			return;
+		}
+
+		if (Date.now() - startedAt >= maxWaitMs) {
+			clearInterval(waitInterval);
+		}
+	}, waitIntervalMs);
+}
+
+function arrangeGames(gamesList, arrangeAllGames, gamesContainer) {
+	if (!gamesContainer) {
+		return;
+	}
+
 	let heightOffset = 0;
 	for (let i = 0; i < gamesList.length; i++) {
 		// Skip hidden games unless we're arranging all games
@@ -78,7 +253,7 @@ function arrangeGames(gamesList, arrangeAllGames) {
 		}
 		const currentGame = gamesList[i];
 		currentGame.style = "top: " + heightOffset + "px;";
-		
+
 		// Check if game has "RESUME" button (means it's a larger card)
 		if (currentGame.textContent.includes("RESUME")) {
 			heightOffset += 206;
@@ -87,169 +262,186 @@ function arrangeGames(gamesList, arrangeAllGames) {
 		}
 	}
 	// Update the container height
-	libraryElements[libraryElements.length - 1].style = "height: " + heightOffset + "px;";
+	gamesContainer.style = "height: " + heightOffset + "px;";
 }
 
 function hideAllGamesExceptOne(gamesContainer) {
-	hiddenGames = [];
-	const usedIndices = [];
-	let gamesHidden = 0;
-
-	debugger;
-
-	while (gamesHidden <= gamesContainer.childElementCount - 1) {
-		let randomIndex = Math.floor(Math.random() * gamesContainer.childElementCount);
-		
-		// Find a unique random index
-		while (usedIndices.includes(randomIndex)) {
-			randomIndex = Math.floor(Math.random() * gamesContainer.childElementCount);
-		}
-
-		// Last game remaining is the winner
-		if (gamesHidden === gamesContainer.childElementCount - 1) {
-			const winningGame = gamesContainer.children[randomIndex];
-			winningGame.style.top = "0px";
-
-			const gameData = extractGameData(winningGame);
-			showModal(gameData.gameUrl, gameData.gameImg, gameData.gameName, gameData.gamePlayed);
-			break;
-		} else {
-			gamesHidden++;
-			hiddenGames.push(gamesContainer.children[randomIndex]);
-			usedIndices.push(randomIndex);
-		}
+	if (!gamesContainer || gamesContainer.childElementCount === 0) {
+		return;
 	}
+
+	const excludedTerms = ["test", "server", "beta"];
+	const allGames = Array.from(gamesContainer.children);
+	const parsedGames = allGames.map((gameElement) => {
+		try {
+			const gameData = extractGameData(gameElement);
+			if (!gameData || !gameData.gameName) {
+				return null;
+			}
+
+			return gameData;
+		} catch (error) {
+			return null;
+		}
+	}).filter((entry) => entry !== null);
+
+	const selectableGames = parsedGames.filter((gameData) => {
+		const gameName = gameData.gameName.toLowerCase();
+		return !excludedTerms.some((term) => gameName.includes(term));
+	});
+
+	const gamePool = selectableGames.length > 0 ? selectableGames : parsedGames;
+	if (gamePool.length === 0) {
+		return;
+	}
+
+	// Pick a random game from the filtered container
+	const randomIndex = Math.floor(Math.random() * gamePool.length);
+	const gameData = gamePool[randomIndex];
+	showModal(gameData.gameUrl, gameData.gameImg, gameData.gameName, gameData.gamePlayed, gameData.achievements);
 }
 
 function extractGameData(gameElement) {
-	debugger;
-	const gameUrl = gameElement.children[0].children[0].href
+	const gameUrl = gameElement.children[0].children[0].href;
 	const gameImg = gameElement.children[0].children[0].children[0].children[0].children[0].srcset;
 	const gameName = gameElement.children[0].children[1].children[0].textContent;
-	
-	// Handle different layouts for playtime display
-	let gamePlayed = gameElement.children[0].children[2].children[0].textContent.replace("TOTAL PLAYED", "");
-	if (gameElement.children[0].children[2].children[0].textContent.includes("LAST TWO")) {
-		gamePlayed = gameElement.children[0].children[2].children[1].textContent.replace("TOTAL PLAYED", "");
+
+	const statsContainer = gameElement.children[0].children[2];
+	let gamePlayed = "";
+	let achievements = "";
+
+	const firstChild = statsContainer.children[0];
+
+	if (firstChild && firstChild.textContent.includes("TOTAL PLAYED")) {
+		// Has playtime
+		if (firstChild.textContent.includes("LAST TWO")) {
+			gamePlayed = statsContainer.children[1].textContent.replace("TOTAL PLAYED", "");
+		} else {
+			gamePlayed = firstChild.textContent.replace("TOTAL PLAYED", "");
+		}
+
+		// Achievements are in the 3rd child (index 2)
+		const achievementsDiv = statsContainer.children[2];
+		if (achievementsDiv && achievementsDiv.textContent.includes("ACHIEVEMENTS")) {
+			if (achievementsDiv.children[0] && achievementsDiv.children[0].children[1]) {
+				achievements = achievementsDiv.children[0].children[1].textContent;
+			}
+		}
+	} else if (firstChild && firstChild.textContent.includes("ACHIEVEMENTS")) {
+		// No playtime, achievements are first
+		if (firstChild.children[0] && firstChild.children[0].children[1]) {
+			achievements = firstChild.children[0].children[1].textContent;
+		}
 	}
 
 	return {
 		gameUrl: gameUrl,
 		gameImg: gameImg,
 		gameName: gameName,
-		gamePlayed: gamePlayed
+		gamePlayed: gamePlayed,
+		achievements: achievements
 	};
 }
 
-function getRandomGames(gamesList, count) {
-	const result = new Array(count);
-	const totalGames = gamesList.length;
-	const usedIndices = new Array(totalGames);
-	
-	if (count > totalGames) {
-		throw new RangeError("getRandomGames: more elements requested than available");
-	}
-	
-	while (count--) {
-		let randomIndex = Math.floor(Math.random() * totalGames);
-		result[count] = gamesList[randomIndex in usedIndices ? usedIndices[randomIndex] : randomIndex];
-		usedIndices[randomIndex] = --totalGames in usedIndices ? usedIndices[totalGames] : totalGames;
-	}
-	return result;
-}
-
-// Start observing the page for Steam library to load
-pageObserver.observe(document, {
-	childList: true,
-	subtree: true
-});
-
-function updateButtonText() {
-	randomizeButton.textContent = "TEST CLICKED TEST TEST TEST";
-}
-
 function getPageContainer() {
-	const container = document.querySelector('#responsive_page_template_content > div:nth-child(4)');
+	// Path to parent of library wrapper: body > div > div > div:nth-of-type(2) > div > div
+	const container = document.querySelector('body > div:first-of-type > div > div:nth-of-type(2) > div > div');
 	if (container) {
 		return container;
 	}
 }
 
 function getLibraryWrapper() {
-	const wrapper = pageContainer.querySelector('div:first-child');
+	// Library wrapper is the 2nd child (children[1]) - contains tabs and games
+	const wrapper = pageContainer ? pageContainer.children[1] : null;
 	if (wrapper) {
 		return wrapper;
 	}
 }
 
-function showModal(gameUrl, gameImage, gameName, gamePlayed) {
-	const modalContent = `<head>
-  <title>Game Display</title>
-  <style>
-    .game-container {
-      width: 400px;
-      display: flex;
-    }
+function ensureModalExists() {
+	let modal = document.getElementById("extensionModalWinner");
+	if (!modal) {
+		injectModal();
+		modal = document.getElementById("extensionModalWinner");
+	}
 
-    .image-section {
-      width: 50%;
-    }
+	return modal;
+}
 
-    .image-section img {
-      max-width: 100%;
-      height: auto;
-    }
+function showModal(gameUrl, gameImage, gameName, gamePlayed, achievements) {
+	const modal = ensureModalExists();
+	const suspenseDiv = document.getElementById("suspense");
+	const winnerDiv = document.getElementById("winnerwinnerchickendinner");
+	const showKoFiWidget = Math.random() < 0.5;
 
-    .text-section {
-      width: 50%;
-      padding: 15px;
-    }
-  </style>
-</head>
+	// Ensure modal exists
+	if (!modal || !suspenseDiv || !winnerDiv) {
+		return;
+	}
 
-<body>
-<div id="extensionModalWinner">
-  <div class="game-container">
-    <div class="image-section">
-      <a href="${gameUrl}">
-        <img src="${gameImage}" alt="Game Image">
-      </a>
-    </div>
+	// Reset button to emoji state
+	resetButtonState();
 
-    <div class="text-section">
-      <p><strong>Game: </strong>${gameName}</p>
-      <p><strong>Played time: </strong>${gamePlayed}</p>
-    </div>
-  </div>
-  <div id="resetButton">
-    <button id="closeModalButton">Close</button>
-    <button id="goAgain">Choose Another</button>
-  </div>
-</div>
-</body>`;
+	// Show the modal
+	modal.style.display = "flex";
 
-	document.body.insertAdjacentHTML('beforeend', modalContent);
+	// Show suspense, hide winner initially
+	if (suspenseDiv) {
+		suspenseDiv.style.display = "block";
+	}
+	winnerDiv.style.display = "none";
+	winnerDiv.innerHTML = "";
+
+	// Create game content HTML with buttons included
+	const playtimeHTML = gamePlayed ? `<p><strong>Played time:</strong> ${gamePlayed}</p>` : '';
+	const achievementsHTML = achievements ? `<p><strong>Achievements:</strong> ${achievements}</p>` : '';
+	const koFiHTML = showKoFiWidget ? `
+		<div id="kofiWidgetContainer">
+			<a href="https://ko-fi.com/P5P41SRS6B" target="_blank" rel="noopener noreferrer">
+				<img height="36" style="border: 0; height: 36px;" src="https://storage.ko-fi.com/cdn/kofi3.png?v=6" border="0" alt="Buy Me a Coffee at ko-fi.com" />
+			</a>
+		</div>
+	` : "";
+	const gameContent = `
+		<div class="game-container">
+			<div class="image-section">
+				<a href="${gameUrl}" target="_blank">
+					<img src="${gameImage}" alt="${gameName}">
+				</a>
+			</div>
+			<div class="text-section">
+				<p><strong>Game:</strong> ${gameName}</p>
+				${playtimeHTML}
+				${achievementsHTML}
+			</div>
+		</div>
+		<div id="resetButton">
+			<button id="closeModalButton">Close</button>
+			<button id="goAgain">Choose Another</button>
+		</div>
+		${koFiHTML}
+	`;
+
+	// Populate the winner div after animation delay
+	setTimeout(() => {
+		if (suspenseDiv) {
+			suspenseDiv.style.display = "none";
+		}
+		winnerDiv.innerHTML = gameContent;
+		winnerDiv.style.display = "block";
+	}, 2500);
 }
 
 function injectModal() {
 	const modalHTML = `
-  <head>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-</head>
-
-<body>
   <div id="extensionModalWinner" style="display: none;">
-    <div id="suspense" class="animate__animated animate__flip animate__repeat-2 2">
-      <p>Finding your game!!!</p>
+    <div id="suspense">
+      <p>looking for a game</p>
     </div>
-    <div id="winnerwinnerchickendinner" class="animate__animated animate__fadeInUpBig animate__delay-4s">
-    </div>
-    <div id="resetButton">
-      <button id="closeModalButton">Close</button>
-      <button id="goAgain">Choose Another</button>
+    <div id="winnerwinnerchickendinner">
     </div>
   </div>
-</body>
   `;
 
 	document.body.insertAdjacentHTML('beforeend', modalHTML);
@@ -257,66 +449,190 @@ function injectModal() {
 
 function injectCSS() {
 	const cssCode = `
-  body {
-    font-family: "Motiva Sans",Arial,Helvetica,sans-serif;
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
-  
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+
+  @keyframes flip {
+    0% {
+      transform: perspective(400px) rotateY(0);
+    }
+    50% {
+      transform: perspective(400px) rotateY(180deg);
+    }
+    100% {
+      transform: perspective(400px) rotateY(360deg);
+    }
+  }
+
   #extensionModalWinner {
+    display: flex;
     flex-direction: column;
-    display: flex; 
+    align-items: center;
+    justify-content: center;
     position: fixed;
-    z-index: 1000;
+    z-index: 10001;
     left: 0;
     top: 0;
-    width: 100%; 
-    height: 100%; 
-    overflow: auto;
-    background-color: rgba(0,0,0,0.9);
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    animation: fadeIn 0.3s ease-in-out;
   }
 
   #suspense {
-    margin: 15% auto;
-    margin-bottom: -140px;
-    margin-top: 150px;
-    z-index: -999;
-    height: 140px;
-    width: 88%;
-    background-color: #199fff;
-    position: relative;
+    background: linear-gradient(135deg, #199fff 0%, #1579c9 100%);
+    border-radius: 16px;
+    padding: 40px 60px;
+    box-shadow: 0 20px 60px rgba(25, 159, 255, 0.5);
+    animation: flip 2s ease-in-out 2, pulse 2s ease-in-out infinite;
+    margin-bottom: 20px;
   }
 
   #suspense p {
-    font-size: 36px;       
-    color: black;         
-    margin-top: 40px;     
-    display: flex;
-    justify-content: center;
-    align-items: center;   
+    font-size: 32px;
+    font-weight: 600;
+    color: white;
+    margin: 0;
+    text-align: center;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
   }
 
   #winnerwinnerchickendinner {
-    margin: 15% auto;
-    height: 140px;
-    margin-top: -140px;
-    margin-bottom: 0px;
-    z-index: -900;
-    border: 1px solid #888;
-    background-color: #199fff;
-    width: 88%;
-    position: relative;
+    background: linear-gradient(135deg, rgba(25, 159, 255, 0.15) 0%, rgba(21, 121, 201, 0.15) 100%);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 25px 70px rgba(25, 159, 255, 0.3);
+    max-width: 500px;
+    width: 90%;
+    border: 2px solid rgba(25, 159, 255, 0.5);
+  }
+
+  #winnerwinnerchickendinner:not(:empty) {
+    animation: slideUp 0.5s ease-out;
+  }
+
+  .game-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .image-section {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .image-section a {
+    display: block;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .image-section a:hover {
+    transform: scale(1.02);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  .image-section img {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    display: block;
+  }
+
+  .text-section {
+    width: 100%;
+    text-align: center;
+  }
+
+  .text-section p {
+    margin: 12px 0;
+    font-size: 18px;
+    color: #ffffff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  .text-section strong {
+    color: #199fff;
+    font-weight: 600;
   }
 
   #resetButton {
-    position: absolute;
-    bottom: 10px;
-    width: 88%;
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 25px;
+    width: 100%;
   }
 
-  #resetButton button {  
-    flex-grow: 1;
-  }  
+  #resetButton button {
+    flex: 1;
+    max-width: 200px;
+    padding: 14px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  #closeModalButton {
+    background: linear-gradient(135deg, #1579c9 0%, #0d5a8f 100%);
+    color: white;
+  }
+
+  #closeModalButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(21, 121, 201, 0.6);
+    background: linear-gradient(135deg, #1a8cd8 0%, #1579c9 100%);
+  }
+
+  #goAgain {
+    background: linear-gradient(135deg, #199fff 0%, #1579c9 100%);
+    color: white;
+  }
+
+  #goAgain:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(25, 159, 255, 0.6);
+    background: linear-gradient(135deg, #33adff 0%, #199fff 100%);
+  }
+
+  #resetButton button:active {
+    transform: translateY(0);
+  }
+
+  #kofiWidgetContainer {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+  }
   `;
 
 	const styleElement = document.createElement('style');
@@ -332,24 +648,28 @@ function setupModalEventListeners() {
 	document.addEventListener('click', function(event) {
 		if (event.target.id === 'closeModalButton') {
 			const modal = document.getElementById('extensionModalWinner');
+			const suspenseDiv = document.getElementById('suspense');
 			const winnerDiv = document.getElementById('winnerwinnerchickendinner');
-			if (modal) modal.style.display = 'none';
-			if (winnerDiv) winnerDiv.innerHTML = '';
+			if (modal) {
+				modal.style.display = 'none';
+			}
+			if (suspenseDiv) {
+				suspenseDiv.style.display = 'block';
+			}
+			if (winnerDiv) {
+				winnerDiv.innerHTML = '';
+				winnerDiv.style.display = 'none';
+			}
 		}
-		
+
 		if (event.target.id === 'goAgain') {
-			const modal = document.getElementById('extensionModalWinner');
 			const winnerDiv = document.getElementById('winnerwinnerchickendinner');
-			if (modal) modal.style.display = 'none';
-			if (winnerDiv) winnerDiv.innerHTML = '';
-			// Trigger another randomization
-			hideAllGamesExceptOne(libraryElements[libraryElements.length - 1]);
-			arrangeGames(libraryElements[libraryElements.length - 1].children, false);
+			if (winnerDiv) {
+				winnerDiv.innerHTML = '';
+				winnerDiv.style.display = 'none';
+			}
+			// Trigger another randomization without closing modal
+			runRandomPickWhenReady();
 		}
 	});
 }
-
-// TODO:
-// - Show modal buttons only after the game has been selected
-// - Create cleaner HTML structure for modal with proper game data display
-// - Add "Choose Another" button functionality

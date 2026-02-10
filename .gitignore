@@ -1,0 +1,29 @@
+# Dependency directories
+# These are typically installed via package managers like npm or yarn.
+# It's better to just commit the package.json and package-lock.json files.
+node_modules/
+
+# Build output / Packaged extensions
+# These are generated files from your source code. They don't need to be in version control.
+dist/
+build/
+web-ext-artifacts/
+*.zip
+*.crx
+
+# IDE and editor directories
+# These files are specific to your local development environment and editor.
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Log files
+# Logs can be verbose and change often.
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# OS-generated files
+.DS_Store
+Thumbs.db
