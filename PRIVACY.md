@@ -24,4 +24,4 @@ All extension behavior runs locally in the browser. No personal data is stored r
 
 ## Contact
 
-Contact: YOUR_EMAIL_HERE
+Contact: followtr0@gmail.com 
