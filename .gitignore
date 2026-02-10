@@ -8,6 +8,7 @@ node_modules/
 dist/
 build/
 web-ext-artifacts/
+random-steam-game/
 *.zip
 *.crx
 
@@ -26,4 +27,5 @@ yarn-debug.log*
 
 # OS-generated files
 .DS_Store
+**/.DS_Store
 Thumbs.db
