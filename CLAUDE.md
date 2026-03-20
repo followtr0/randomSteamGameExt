@@ -58,10 +58,11 @@ The randomization in `hideAllGamesExceptOne()`:
 
 ### Game Data Extraction
 
-The `extractGameData()` function handles multiple Steam library layouts:
-- **With Playtime**: Extracts "TOTAL PLAYED" time and achievements (3rd child)
-- **Without Playtime**: Achievements are first child, no playtime shown
-- **Achievement Format**: Navigates div > div > 2nd child for achievement count
+The `extractGameData()` function uses content-based heuristics instead of rigid child indexing:
+- **Game URL/Image**: Found via `a[href*="/app/"]` selector and `img` element
+- **Game Name**: Text-bearing `<a>` inside a `<span>` (distinguishes from image link)
+- **Playtime**: Found by scanning for elements containing "TOTAL PLAYED" text
+- **Achievements**: Found by scanning for elements containing "ACHIEVEMENTS" text
 - Returns: gameUrl, gameImg, gameName, gamePlayed, achievements
 
 ### Game Card Layout Handling
@@ -97,14 +98,14 @@ The extension creates a modal overlay to display the selected game:
 - Minimal use of `!important` in CSS (only for critical positioning/display properties)
 - Event delegation pattern for dynamic content
 
-## DOM Selectors
+## DOM Discovery
 
-The extension relies on specific Steam Community DOM structures:
-- Page container: `body > div:first-of-type > div > div:nth-of-type(2) > div > div`
-- Library wrapper: Second child (children[1]) of page container
-- Games list: Last child element of library wrapper (accessed via `libraryElements[libraryElements.length - 1]`)
+The extension uses content-based and structural heuristics to find DOM elements, avoiding rigid CSS paths or obfuscated class names that break when Steam updates:
+- **Games container**: Found by locating any `a[href*="/app/"]` link, then walking up the DOM to find the parent with >20 children (the games list)
+- **Tab elements**: Found by scanning for elements whose text starts with "Recently Played", "All Games", or "Perfect Games"
+- **Game data**: Extracted using `querySelector` for links/images and text-content matching for stats
 
-Steam may change their DOM structure, which would break these selectors.
+Steam uses obfuscated/hashed class names that change with every build, so selectors must never rely on class names.
 
 ### Tab Switching Behavior
 

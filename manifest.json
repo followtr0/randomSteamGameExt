@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Random Steam Game",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Pick a random game from your Steam library with a single click. Never spend hours deciding what to play again!",
   "icons": {
     "16": "icons/icon16.png",
@@ -31,12 +31,6 @@
         "https://steamcommunity.com/profiles/*/games*"
       ]
     }
-  ],
-  "permissions": [
-    "tabs"
-  ],
-  "host_permissions": [
-    "https://steamcommunity.com/*"
   ],
   "web_accessible_resources": [
     {

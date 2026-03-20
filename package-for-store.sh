@@ -3,6 +3,17 @@
 
 echo "📦 Packaging Random Steam Game extension..."
 
+# Minify JS files
+echo "Minifying JS files..."
+npx --yes terser scripts/content.js -c -m -o scripts/content.min.js
+npx --yes terser scripts/background-chrome.js -c -m -o scripts/background-chrome.min.js
+
+# Swap minified files in place for packaging
+mv scripts/content.js scripts/content.dev.js
+mv scripts/background-chrome.js scripts/background-chrome.dev.js
+mv scripts/content.min.js scripts/content.js
+mv scripts/background-chrome.min.js scripts/background-chrome.js
+
 # Create zip excluding dev files
 zip -r random-steam-game.zip \
   manifest.json \
@@ -17,9 +28,14 @@ zip -r random-steam-game.zip \
   -x "*README.md" \
   -x "*PRODUCTION-CHECKLIST.md" \
   -x "*store-assets*" \
-  -x "*package-for-store.sh"
+  -x "*package-for-store.sh" \
+  -x "*scripts/*.dev.js"
 
-echo "✅ Created random-steam-game.zip"
+# Restore original files
+mv scripts/content.dev.js scripts/content.js
+mv scripts/background-chrome.dev.js scripts/background-chrome.js
+
+echo "✅ Created random-steam-game.zip (with minified JS)"
 echo ""
 echo "📋 Next steps:"
 echo "1. Create all icons (see icons/README.md)"

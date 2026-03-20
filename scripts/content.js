@@ -1,5 +1,3 @@
-let pageContainer = null;
-let libraryWrapper = null;
 let randomizeButton = null;
 const randomButtonIconUrl = chrome.runtime.getURL("icons/icon48.png");
 
@@ -92,20 +90,10 @@ function ensureButtonExists() {
 }
 
 function initializeExtension() {
-	pageContainer = getPageContainer();
-
-	if (pageContainer) {
-		libraryWrapper = getLibraryWrapper();
-
-		if (libraryWrapper) {
-			const currentLibraryElements = libraryWrapper.children;
-
-			if (currentLibraryElements) {
-				addListenersToGameTabs(currentLibraryElements);
-
-				return true;
-			}
-		}
+	const gamesContainer = getGamesContainer();
+	if (gamesContainer) {
+		addListenersToGameTabs();
+		return true;
 	}
 	return false;
 }
@@ -169,53 +157,52 @@ if (document.readyState === 'loading') {
 	initializeUI();
 }
 
-function addListenersToGameTabs(libraryElements) {
-	for (let i = 0; i < libraryElements.length; i++) {
-		if (libraryElements[i].className.includes("sectionTabs")) {
-			for (let j = 0; j < libraryElements[i].children.length; j++) {
-				const tab = libraryElements[i].children[j];
-
-				if (tab.textContent.includes("Recently") ||
-					tab.textContent.includes("All Games") ||
-					tab.textContent.includes("Perfect Games")
-				) {
-					if (tab.dataset.randomGameTabBound === 'true') {
-						continue;
-					}
-
-					tab.dataset.randomGameTabBound = 'true';
-					tab.addEventListener("click", function() {
-						if (this.className.includes("active")) {
-							return;
-						}
-						const gamesContainer = getGamesContainer();
-						if (!gamesContainer) {
-							return;
-						}
-						const gamesList = gamesContainer.children;
-						// Show all hidden games when switching tabs
-						for (let k = 0; k < gamesList.length; k++) {
-							if (gamesList[k].style.display === "none") {
-								gamesList[k].style.display = "";
-							}
-						}
-						arrangeGames(gamesList, true, gamesContainer);
-					});
-				}
+function addListenersToGameTabs() {
+	const tabTexts = ["Recently Played", "All Games", "Perfect Games"];
+	const allElements = document.querySelectorAll("*");
+	for (const el of allElements) {
+		if (el.children.length <= 2 && tabTexts.some(t => el.textContent.startsWith(t))) {
+			if (el.dataset.randomGameTabBound === "true") {
+				continue;
 			}
+			el.dataset.randomGameTabBound = "true";
+			el.addEventListener("click", function() {
+				const gamesContainer = getGamesContainer();
+				if (!gamesContainer) {
+					return;
+				}
+				const gamesList = gamesContainer.children;
+				for (let k = 0; k < gamesList.length; k++) {
+					if (gamesList[k].style.display === "none") {
+						gamesList[k].style.display = "";
+					}
+				}
+				arrangeGames(gamesList, true, gamesContainer);
+			});
 		}
 	}
 }
 
 function getGamesContainer() {
-	initializeExtension();
-
-	if (!libraryWrapper || libraryWrapper.children.length === 0) {
+	// Find any game link on the page (href may be relative "/app/XXX" or absolute)
+	const gameLink = document.querySelector('a[href*="/app/"]');
+	if (!gameLink) {
 		return null;
 	}
 
-	const gamesContainer = libraryWrapper.children[libraryWrapper.children.length - 1];
-	return gamesContainer;
+	// Walk up to find the container whose children mostly contain game links
+	let best = null;
+	let bestCount = 0;
+	let el = gameLink.parentElement;
+	while (el && el !== document.body) {
+		const gameLinks = el.querySelectorAll(':scope > * a[href*="/app/"]');
+		if (gameLinks.length > bestCount) {
+			bestCount = gameLinks.length;
+			best = el;
+		}
+		el = el.parentElement;
+	}
+	return best;
 }
 
 function runRandomPickWhenReady() {
@@ -312,61 +299,51 @@ function hideAllGamesExceptOne(gamesContainer) {
 }
 
 function extractGameData(gameElement) {
-	const gameUrl = gameElement.children[0].children[0].href;
-	const gameImg = gameElement.children[0].children[0].children[0].children[0].children[0].srcset;
-	const gameName = gameElement.children[0].children[1].children[0].textContent;
+	const link = gameElement.querySelector('a[href*="/app/"]');
+	if (!link) {
+		return null;
+	}
 
-	const statsContainer = gameElement.children[0].children[2];
+	const gameUrl = link.href;
+	const img = gameElement.querySelector("img");
+	const gameImg = img ? img.src : "";
+
+	// Game name: find a text-bearing <a> inside a <span> (not the image link)
+	const nameLinks = gameElement.querySelectorAll('a[href*="/app/"]');
+	let gameName = "";
+	for (const nl of nameLinks) {
+		if (nl.textContent.trim() && nl.parentElement.tagName === "SPAN") {
+			gameName = nl.textContent.trim();
+			break;
+		}
+	}
+	if (!gameName && nameLinks.length > 0) {
+		for (const nl of nameLinks) {
+			if (nl.textContent.trim()) {
+				gameName = nl.textContent.trim();
+				break;
+			}
+		}
+	}
+
+	// Stats: find by text content
 	let gamePlayed = "";
 	let achievements = "";
 
-	const firstChild = statsContainer.children[0];
-
-	if (firstChild && firstChild.textContent.includes("TOTAL PLAYED")) {
-		// Has playtime
-		if (firstChild.textContent.includes("LAST TWO")) {
-			gamePlayed = statsContainer.children[1].textContent.replace("TOTAL PLAYED", "");
-		} else {
-			gamePlayed = firstChild.textContent.replace("TOTAL PLAYED", "");
-		}
-
-		// Achievements are in the 3rd child (index 2)
-		const achievementsDiv = statsContainer.children[2];
-		if (achievementsDiv && achievementsDiv.textContent.includes("ACHIEVEMENTS")) {
-			if (achievementsDiv.children[0] && achievementsDiv.children[0].children[1]) {
-				achievements = achievementsDiv.children[0].children[1].textContent;
+	const allElements = gameElement.querySelectorAll("*");
+	for (const el of allElements) {
+		if (el.children.length === 0 || el.querySelectorAll("*").length < 3) {
+			const text = el.textContent;
+			if (text.includes("TOTAL PLAYED") && !gamePlayed) {
+				gamePlayed = text.replace("TOTAL PLAYED", "").trim();
+			}
+			if (text.includes("ACHIEVEMENTS") && !achievements) {
+				achievements = text.replace("ACHIEVEMENTS", "").trim();
 			}
 		}
-	} else if (firstChild && firstChild.textContent.includes("ACHIEVEMENTS")) {
-		// No playtime, achievements are first
-		if (firstChild.children[0] && firstChild.children[0].children[1]) {
-			achievements = firstChild.children[0].children[1].textContent;
-		}
 	}
 
-	return {
-		gameUrl: gameUrl,
-		gameImg: gameImg,
-		gameName: gameName,
-		gamePlayed: gamePlayed,
-		achievements: achievements
-	};
-}
-
-function getPageContainer() {
-	// Path to parent of library wrapper: body > div > div > div:nth-of-type(2) > div > div
-	const container = document.querySelector('body > div:first-of-type > div > div:nth-of-type(2) > div > div');
-	if (container) {
-		return container;
-	}
-}
-
-function getLibraryWrapper() {
-	// Library wrapper is the 2nd child (children[1]) - contains tabs and games
-	const wrapper = pageContainer ? pageContainer.children[1] : null;
-	if (wrapper) {
-		return wrapper;
-	}
+	return { gameUrl, gameImg, gameName, gamePlayed, achievements };
 }
 
 function ensureModalExists() {
